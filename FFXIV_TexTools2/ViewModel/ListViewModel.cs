@@ -113,6 +113,11 @@ namespace FFXIV_TexTools2.ViewModel
                     {
                         race = race.Substring(race.IndexOf('c') + 1, 4);
                     }
+                    if(entry.fullPath.Contains("skin_m.tex"))
+                    {
+                        // Catch for base skin texture.
+                        race = "0101";
+                    }
                     else
                     {
                         race = race.Substring(race.LastIndexOf('c') + 1, 4);
@@ -128,6 +133,14 @@ namespace FFXIV_TexTools2.ViewModel
             }
 
             mlm.Race = race;
+
+            if(entry.fullPath.Contains("--"))
+            {
+                mlm.DXType = Strings.DX11;
+            } else
+            {
+                mlm.DXType = Strings.DX9;
+            }
 
 
             if (entry.fullPath.Contains("_d."))
@@ -222,11 +235,9 @@ namespace FFXIV_TexTools2.ViewModel
             {
                 var info = MTRL.GetMTRLInfo(entry.modOffset, false);
 
-                var bitmap = TEX.ColorSetToBitmap(info.ColorData);
-
-                mlm.BMP = Imaging.CreateBitmapSourceFromHBitmap(bitmap.GetHbitmap(), IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+                using (var bitmap = TEX.ColorSetToBitmap(info.ColorData))
+                    mlm.BMP = TexHelper.CreateBitmapSource(bitmap);
                 mlm.BMP.Freeze();
-                bitmap.Dispose();
             }
             else if (entry.fullPath.Contains("model"))
             {

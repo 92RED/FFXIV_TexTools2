@@ -28,6 +28,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Input;
 using System.Xml;
@@ -99,11 +100,19 @@ namespace FFXIV_TexTools2.ViewModel
         }
 
         /// <summary>
-        /// Command for the ModList Menu
+        /// Command for the Model ID Search
         /// </summary>
         public ICommand IDSearchCommand
         {
             get { return new RelayCommand(IDSearch); }
+        }
+
+        /// <summary>
+        /// Command for UI Search
+        /// </summary>
+        public ICommand UISearchCommand
+        {
+            get { return new RelayCommand(UISearch); }
         }
 
 
@@ -312,6 +321,15 @@ namespace FFXIV_TexTools2.ViewModel
             modelSearch.Show();
         }
 
+        private void UISearch(object obj)
+        {
+            UISearch uiSearch = new UISearch(this);
+            uiSearch.Owner = App.Current.MainWindow;
+            uiSearch.Show();
+        }
+
+
+
 
         /// <summary>
         /// Asks for game directory and sets default save directory
@@ -511,16 +529,9 @@ namespace FFXIV_TexTools2.ViewModel
         /// </summary>
         private void MakeModContainers()
         {
-            foreach (var datName in Info.ModDatDict)
-            {
-                var datPath = string.Format(Info.datDir, datName.Key, datName.Value);
+            var ffxivDir = new DirectoryInfo(Properties.Settings.Default.FFXIV_Directory);
 
-                if (!File.Exists(datPath))
-                {
-                    CreateDat.MakeDat();
-                    CreateDat.ChangeDatAmounts();
-                }
-            }
+            var newModListDirectory = new DirectoryInfo(Path.Combine(ffxivDir.Parent.Parent.FullName, "XivMods.json"));
 
             if (Properties.Settings.Default.Modlist_Directory.Equals(""))
             {
@@ -532,6 +543,25 @@ namespace FFXIV_TexTools2.ViewModel
             if (!File.Exists(Properties.Settings.Default.Modlist_Directory))
             {
                 CreateDat.CreateModList();
+            }
+
+            if (File.Exists(newModListDirectory.FullName))
+            {
+                FlexibleMessageBox.Show("You are using an older version of TexTools.\n\n" +
+                                        "Importing with this version may cause issues.", "Conflicting Versions", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+
+            foreach (var datName in Info.ModDatDict)
+            {
+                var datPath = string.Format(Info.datDir, datName.Key, datName.Value);
+
+                if (!File.Exists(datPath))
+                {
+                    CreateDat.MakeDat();
+                    CreateDat.ChangeDatAmounts();
+                }
             }
         }
 
@@ -628,6 +658,8 @@ namespace FFXIV_TexTools2.ViewModel
                     catDict.Add(c.Name, new TreeNode() { Name = c.Name });
                     Dictionary<string, TreeNode> subCatDict = new Dictionary<string, TreeNode>();
 
+                    var lowerSearchText = searchText.ToLower();
+
                     foreach (var ch in c.Children)
                     {
                         foreach (var ch1 in ch.Children)
@@ -638,7 +670,7 @@ namespace FFXIV_TexTools2.ViewModel
 
                                 foreach (var ch2 in ch1.Children)
                                 {
-                                    if (ch2.Name.ToLower().Contains(searchText.ToLower()))
+                                    if (ch2.Name.ToLower().Contains(lowerSearchText))
                                     {
                                         var itemNode = new TreeNode() { Name = ch2.Name, ItemData = ch2.ItemData };
 
@@ -669,7 +701,7 @@ namespace FFXIV_TexTools2.ViewModel
                             }
                             else
                             {
-                                if (ch1.Name.ToLower().Contains(searchText.ToLower()))
+                                if (ch1.Name.ToLower().Contains(lowerSearchText))
                                 {
                                     var itemNode = new TreeNode() { Name = ch1.Name, ItemData = ch1.ItemData };
                                     if (subCatDict.ContainsKey(ch.Name))
@@ -695,18 +727,20 @@ namespace FFXIV_TexTools2.ViewModel
                     }
                 }
 
-                Category = new ObservableCollection<CategoryViewModel>();
+                var newCategory = new ObservableCollection<CategoryViewModel>();
 
                 foreach (var c in catDict.Values)
                 {
                     if(c.SubNode.Count > 0)
                     {
                         var cvm = new CategoryViewModel(c);
-                        Category.Add(cvm);
+                        newCategory.Add(cvm);
                         cvm.ExpandAll();
                     }
 
                 }
+
+                Category = newCategory;
             }
             else
             {
@@ -785,7 +819,7 @@ namespace FFXIV_TexTools2.ViewModel
                             }
                             else if (indexFile.Key.Equals(Strings.UIDat))
                             {
-                                if (datNum == 1)
+                                if (datNum == 2)
                                 {
                                     problem = true;
                                     break;
@@ -828,7 +862,7 @@ namespace FFXIV_TexTools2.ViewModel
                             }
                             else if (indexFile.Key.Equals(Strings.UIDat))
                             {
-                                if (datNum == 1)
+                                if (datNum == 2)
                                 {
                                     problem = true;
                                     break;
